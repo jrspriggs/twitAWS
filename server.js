@@ -1,5 +1,13 @@
 /* Setting things up. */
 require('dotenv').config();
+var Airtable = require('airtable');
+var base = new Airtable({
+  apiKey: process.env.AIRTABLE_API_KEY,
+}).base(process.env.AIRTABLE_BASE_ID);
+var tweetsTable = 'Tweets';
+var hashTagsTable = 'hashtags';
+var viewName = 'Main View';
+
 var path = require('path'),
     express = require('express'),
     app = express(),   
@@ -22,6 +30,31 @@ app.use(express.static('public'));
 app.all("/" + process.env.BOT_ENDPOINT, function (request, response) {
 /* The example below tweets out "Hello world!". */
   var resp = response;
+  if (cachedResponse && new Date() - cachedResponseDate < cacheTimeoutMs) {
+    response.send(cachedResponse);
+  } else {
+    // Select the first 10 records from the view.
+    base(tweetsTable).select({
+      maxRecords: 10,
+      view: viewName,
+    }).firstPage(function(error, records) {
+      if (error) {
+        response.send({error: error});
+      } else {
+        cachedResponse = {
+          records: records.map(record => {
+            return {
+              name: record.get('Name'),
+              picture: record.get('Picture'),
+            };
+          }),
+        };
+        cachedResponseDate = new Date();
+        
+        response.send(cachedResponse);
+      }
+    });
+  }
   T.post('statuses/update', { status: 'hello world 👋' }, function(err, data, response) {
     if (err){
       resp.sendStatus(500);
@@ -34,8 +67,31 @@ app.all("/" + process.env.BOT_ENDPOINT, function (request, response) {
   });
 });
 
+// Cache the records in case we get a lot of traffic.
+// Otherwise, we'll hit Airtable's rate limit.
+var cacheTimeoutMs = 5 * 1000; // Cache for 5 seconds.
+var cachedResponse = null;
+var cachedResponseDate = null;
+var cachedHashTags = null;
+
 var listener = app.listen(process.env.PORT, function () {
   console.log('Your bot is running on port ' + listener.address().port);
   console.log('startup tweet');
   T.post('statuses/update', { status: 'Ready Player One' });
+    base(tweetsTable).select({
+      maxRecords: 10,
+      view: viewName,
+    }).firstPage(function(error, records) {
+      if (error) {
+      } else {
+        cachedHashTags = {
+          records: records.map(record => {
+            return {
+              tag: record.get('tag'),
+              length: record.get('length'),
+            };
+          }),
+        };
+      }
+    });
 });
