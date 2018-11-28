@@ -98,6 +98,19 @@ var listener = app.listen(process.env.PORT, function () {
   console.log('startup tweet');
   //tweetStatus('Ready Player One');
   tweetPlayer();
+  /*
+  TODOS: 1 connnect to database
+        2 start caching tweets/tags
+        3 link builder
+        4 reset cache when older than one hour
+        5 tweet a random book link ad every 77 minutes
+          A) make link
+          B) add certain hashtags always
+          C) add random hashtags other times 
+          D) length alway < 280 chars (does this include url though)
+        6 every 11 minutes grab recent iartg post, repost
+        7 random generate post
+  */
   
   
 });
