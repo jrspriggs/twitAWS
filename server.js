@@ -28,10 +28,11 @@ app.use(express.static('public'));
 /* You can use uptimerobot.com or a similar site to hit your /BOT_ENDPOINT to wake up your app and make your Twitter bot tweet. */
 
 function tweetStatus(message) {
-  T.post('statuses/update', { status: message }, function(err, data) {
+  T.post('statuses/update', { status: message }, function(err, data, response) {
     if (err){
       console.log('Error!');
       console.log(err);
+      console.log();
     }
     else{
       console.log('success!');
@@ -76,7 +77,14 @@ app.all("/" + process.env.BOT_ENDPOINT, function (request, response) {
   tweetStatus('hello world 👋');
 });
 
+function tweetPlayer() {
+  
+    tweetStatus("Ready Player " + player.toString(10));
+    player++;
+    setTimeout(tweetPlayer, 10000);
+}
 
+var player = 1;
 
 // Cache the records in case we get a lot of traffic.
 // Otherwise, we'll hit Airtable's rate limit.
@@ -86,25 +94,10 @@ var cachedResponseDate = null;
 var cachedHashTags = null;
 
 var listener = app.listen(process.env.PORT, function () {
-  var stream = T.stream('user');
-  stream.on('follow', followed);
   console.log('Your bot is running on port ' + listener.address().port);
   console.log('startup tweet');
-  tweetStatus('Ready Player One');
-    base(tweetsTable).select({
-      maxRecords: 10,
-      view: viewName,
-    }).firstPage(function(error, records) {
-      if (error) {
-      } else {
-        cachedHashTags = {
-          records: records.map(record => {
-            return {
-              tag: record.get('tag'),
-              length: record.get('length'),
-            };
-          }),
-        };
-      }
-    });
+  //tweetStatus('Ready Player One');
+  tweetPlayer();
+  
+  
 });
