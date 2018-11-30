@@ -42,6 +42,7 @@ function tweetStatus(message) {
     }
     else{
       console.log('success!');
+      console.log("tweeted: ", message);
     }
   });
 }
@@ -58,9 +59,69 @@ app.all("/" + process.env.BOT_ENDPOINT, function (request, response) {
   tweetStatus('hello world 👋');
 });
 
+function retweet(id) {
+  console.log(id);
+  T.post('statuses/retweet/:id', { id: id }, function (err, data, response) {
+    if (err){
+      console.log('Error!');
+      console.log(err);
+      console.log();
+    }
+    console.log(data)
+  })
+}
+
+function likeTweet(id) {
+  console.log("liking: ", id);
+  T.post('favorites/create', { id: id }, function (err, data, response) {
+    if (err){
+      console.log('Error!');
+      console.log(err);
+      console.log();
+    }
+    console.log(data)
+  })
+}
+
+function buildLink() {
+  var y = Math.floor((Math.random() * cachedBookTweets.length));
+  var advert = cachedBookTweets[y].tweet;
+  //add the link
+  advert += " https://www.amazon.com/dp/" + cachedBookTweets[y].ASIN
+  var usedTags = [];
+  console.log(advert);
+  while(advert.length < 280) {
+    // add hashtags until the ad is filled
+    var randTag = Math.floor((Math.random() * cachedHashTags.length));
+    if(usedTags.indexOf(cachedHashTags[randTag].tag) >= 0) {
+      console.log("found and continuing: ", cachedHashTags[randTag].tag, usedTags)
+      // tag was already used, skip and do it again
+      continue;
+    }
+    
+    if((advert.length + cachedHashTags[randTag].length + 2) > 280) {
+    console.log("returning", advert);
+      return advert;
+    }
+    advert += " #" + cachedHashTags[randTag].tag;
+    console.log(advert);
+    usedTags.push(cachedHashTags[randTag].tag);
+  }
+}
+
 function tweetPlayer() {
   
-    tweetStatus("Ready Player " + fibonacciSequence[player].toString(10) + " from array index " + player.toString(10));
+    if(fibonacciSequence[player] === 89) {
+      // tweet the book ad
+    } else if ( (player % 2) === 0 )  {
+      retweetAndLikeByTag('#iartg');
+      // even number index, retweet #iartg
+    } else {
+      // odd number index, tinkering time with making a more useful tweet
+      retweetAndLikeByTag('#iartg');
+      tweetStatus("Ready Player " + fibonacciSequence[player].toString(10) + " from array index " + player.toString(10));
+    }
+  
     player++;
     if(player >= fibonacciSequence.length) {
       player = 0;
@@ -83,6 +144,7 @@ function fillCaches() {
         var obj = rows[i];
         cachedBookTweets.push(obj);
     }
+    console.log("book tweets cache refilled!");
   });
   
   connection.query('select * from hashtags', function (err, rows, fields) {
@@ -91,9 +153,24 @@ function fillCaches() {
         var obj = rows[i];
         cachedHashTags.push(obj);
     }
+    console.log("book hashtags cache refilled!");
   });
-  
   connection.end
+}
+
+function tryTweetLinks() {
+  var link1 = buildLink();
+  var link2 = buildLink();
+  var link3 = buildLink();
+  var link4 = buildLink();
+  console.log("tweet 1", link1);
+  console.log("tweet 1 length", link1.length);
+  console.log("tweet 2", link2);
+  console.log("tweet 2 length", link2.length);
+  console.log("tweet 3", link3);
+  console.log("tweet 3 length", link3.length);
+  console.log("tweet 4", link4);
+  console.log("tweet 4 length", link4.length);
 }
 
 var fibonacciSequence = [1,1,2,3,5,8,13,21,34,55,89];
@@ -108,13 +185,11 @@ var listener = app.listen(process.env.PORT, function () {
   console.log('Your bot is running on port ' + listener.address().port);
   console.log('startup tweet');
   fillCaches();
-  //tweetStatus('Ready Player One');
-  tweetPlayer();
+  //give ten seconds to fill the caches
+   //setTimeout(tweetPlayer, 10000);
+   setTimeout(tryTweetLinks, 3000);
   /*
-  TODOS: 1 connnect to database
-        2 start caching tweets/tags
-        3 link builder
-        4 reset cache when older than one hour
+  TODOS: 3 link builder
         5 tweet a random book link ad every on the 89 minute of fibonacci
           A) make link
           B) add certain hashtags always
@@ -126,3 +201,15 @@ var listener = app.listen(process.env.PORT, function () {
   
   
 });
+
+function retweetAndLikeByTag(hashTag) {
+  T.get('search/tweets', { q: hashTag + ' -filter:retweets', count:3, result_type: 'recent' }, function(err, data, response) {
+    if (err) throw err
+    console.log(data.statuses);
+    for(var i = 0; i < data.statuses.length; i++) {
+        likeTweet(data.statuses[i].id_str);
+    }
+    retweet(data.statuses[0].id_str);
+  });
+  
+}
