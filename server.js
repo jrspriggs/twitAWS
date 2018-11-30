@@ -4,9 +4,15 @@ var Airtable = require('airtable');
 var base = new Airtable({
   apiKey: process.env.AIRTABLE_API_KEY,
 }).base(process.env.AIRTABLE_BASE_ID);
-var tweetsTable = 'Tweets';
-var hashTagsTable = 'hashtags';
-var viewName = 'Main View';
+
+var mysql = require('mysql')
+var connection = mysql.createConnection({
+  host     : process.env.DBHOST,
+  user     : process.env.DBUSERNAME,
+  password : process.env.DBPASSWORD,
+  database : process.env.DB
+});
+
 
 var path = require('path'),
     express = require('express'),
@@ -49,53 +55,59 @@ function followed(eventMessage) {
 app.all("/" + process.env.BOT_ENDPOINT, function (request, response) {
 /* The example below tweets out "Hello world!". */
   var resp = response;
-  if (cachedResponse && new Date() - cachedResponseDate < cacheTimeoutMs) {
-    response.send(cachedResponse);
-  } else {
-    // Select the first 10 records from the view.
-    base(tweetsTable).select({
-      maxRecords: 10,
-      view: viewName,
-    }).firstPage(function(error, records) {
-      if (error) {
-        response.send({error: error});
-      } else {
-        cachedResponse = {
-          records: records.map(record => {
-            return {
-              name: record.get('Name'),
-              picture: record.get('Picture'),
-            };
-          }),
-        };
-        cachedResponseDate = new Date();
-        
-        response.send(cachedResponse);
-      }
-    });
-  }
   tweetStatus('hello world 👋');
 });
 
 function tweetPlayer() {
   
-    tweetStatus("Ready Player " + player.toString(10));
+    tweetStatus("Ready Player " + fibonacciSequence[player].toString(10) + " from array index " + player.toString(10));
     player++;
-    setTimeout(tweetPlayer, 10000);
+    if(player >= fibonacciSequence.length) {
+      player = 0;
+      //refill caches
+      fillCaches();
+      
+    }
+    setTimeout(tweetPlayer, fibonacciSequence[player] * 60000);
+    console.log("Next Player: ", player);
 }
 
-var player = 1;
+function fillCaches() {
+  
+  cachedBookTweets = [];
+  cachedHashTags = [];
+  connection.connect();
+  connection.query('select * from tweets', function (err, rows, fields) {
+    if (err) throw err
+    for(var i = 0; i < rows.length; i++) {
+        var obj = rows[i];
+        cachedBookTweets.push(obj);
+    }
+  });
+  
+  connection.query('select * from hashtags', function (err, rows, fields) {
+    if (err) throw err
+    for(var i = 0; i < rows.length; i++) {
+        var obj = rows[i];
+        cachedHashTags.push(obj);
+    }
+  });
+  
+  connection.end
+}
+
+var fibonacciSequence = [1,1,2,3,5,8,13,21,34,55,89];
+var player = 0;
 
 // Cache the records in case we get a lot of traffic.
 // Otherwise, we'll hit Airtable's rate limit.
-var cacheTimeoutMs = 5 * 1000; // Cache for 5 seconds.
-var cachedResponse = null;
-var cachedResponseDate = null;
-var cachedHashTags = null;
+var cachedBookTweets = [];
+var cachedHashTags = [];
 
 var listener = app.listen(process.env.PORT, function () {
   console.log('Your bot is running on port ' + listener.address().port);
   console.log('startup tweet');
+  fillCaches();
   //tweetStatus('Ready Player One');
   tweetPlayer();
   /*
@@ -103,12 +115,12 @@ var listener = app.listen(process.env.PORT, function () {
         2 start caching tweets/tags
         3 link builder
         4 reset cache when older than one hour
-        5 tweet a random book link ad every 77 minutes
+        5 tweet a random book link ad every on the 89 minute of fibonacci
           A) make link
           B) add certain hashtags always
           C) add random hashtags other times 
           D) length alway < 280 chars (does this include url though)
-        6 every 11 minutes grab recent iartg post, repost
+        6 every even index minutes grab recent iartg post, repost
         7 random generate post
   */
   
