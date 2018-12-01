@@ -111,7 +111,8 @@ function buildLink() {
 
 function tweetPlayer() {
   
-    if(fibonacciSequence[player] === 89) {
+    if(fibonacciSequence[player] === 89 || fibonacciSequence[player] === 29) {
+      buildLink();
       // tweet the book ad
     } else if ( (player % 2) === 0 )  {
       retweetAndLikeByTag('#iartg');
@@ -119,7 +120,6 @@ function tweetPlayer() {
     } else {
       // odd number index, tinkering time with making a more useful tweet
       retweetAndLikeByTag('#iartg');
-      tweetStatus("Ready Player " + fibonacciSequence[player].toString(10) + " from array index " + player.toString(10));
     }
   
     player++;
@@ -186,16 +186,10 @@ var listener = app.listen(process.env.PORT, function () {
   console.log('startup tweet');
   fillCaches();
   //give ten seconds to fill the caches
-   //setTimeout(tweetPlayer, 10000);
-   setTimeout(tryTweetLinks, 3000);
+   setTimeout(tweetPlayer, 10000);
+   // setTimeout(tryTweetLinks, 3000);
   /*
-  TODOS: 3 link builder
-        5 tweet a random book link ad every on the 89 minute of fibonacci
-          A) make link
-          B) add certain hashtags always
-          C) add random hashtags other times 
-          D) length alway < 280 chars (does this include url though)
-        6 every even index minutes grab recent iartg post, repost
+  TODOS:5 tweet a random book link ad every on the 89 minute of fibonacci
         7 random generate post
   */
   
