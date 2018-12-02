@@ -117,8 +117,8 @@ function buildRandoTweet() {
   }
   var verbing2Index = Math.floor((Math.random() * cachedVerbings.length));
   var nounIndex = Math.floor((Math.random() * cachedNouns.length));
-  var randoTweet = "Before you is a " + cachedPlaces[placeIndex].place + ". The " + cachedPluralNouns[pluralNounIndex].noun + " are " + 
-                    cachedVerbings[verbing1Index].verbing + ". The " + cachedNouns[nounIndex].noun + " is " + cachedVerbings[verbing2Index].verbing + "."; 
+  var randoTweet = "Before you is " + cachedPlaces[placeIndex].place + ". The " + cachedPluralNouns[pluralNounIndex].noun + " are " + 
+                    cachedVerbings[verbing1Index].verbing + ". The " + cachedNouns[nounIndex].noun + " is " + cachedVerbings[verbing2Index].verbing + ". #writingPrompts"; 
   return randoTweet;
 }
 
@@ -128,7 +128,8 @@ function tweetPlayer() {
       tweetStatus(buildLink());
       // tweet the book ad
     } else if ( (player % 2) !== 0 )  {
-      retweetAndLikeByTag('#iartg');
+      var randTag = Math.floor((Math.random() * cachedSourceTags.length));
+      retweetAndLikeByTag(cachedSourceTags[randTag]);
       // odd number index, retweet #iartg
     } else {
       tweetStatus(buildRandoTweet());
@@ -203,6 +204,15 @@ function fillCaches() {
     }
     console.log("verbings cache refilled!");
   });
+  
+  connection.query('select * from sourceTags', function (err, rows, fields) {
+    if (err) throw err
+    for(var i = 0; i < rows.length; i++) {
+        var obj = rows[i];
+        cachedSourceTags.push(obj);
+    }
+    console.log("source tags cache refilled!");
+  });
 }
 
 function tryTweetLinks() {
@@ -231,6 +241,7 @@ var cachedPlaces = [];
 var cachedPluralNouns = [];
 var cachedNouns = [];
 var cachedVerbings = [];
+var cachedSourceTags = [];
 
 var listener = app.listen(process.env.PORT, function () {
   console.log('Your bot is running on port ' + listener.address().port);
