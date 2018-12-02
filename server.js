@@ -67,7 +67,6 @@ function retweet(id) {
       console.log(err);
       console.log();
     }
-    console.log(data)
   })
 }
 
@@ -79,7 +78,6 @@ function likeTweet(id) {
       console.log(err);
       console.log();
     }
-    console.log(data)
   })
 }
 
@@ -89,37 +87,51 @@ function buildLink() {
   //add the link
   advert += " https://www.amazon.com/dp/" + cachedBookTweets[y].ASIN
   var usedTags = [];
-  console.log(advert);
   while(advert.length < 280) {
     // add hashtags until the ad is filled
     var randTag = Math.floor((Math.random() * cachedHashTags.length));
     if(usedTags.indexOf(cachedHashTags[randTag].tag) >= 0) {
-      console.log("found and continuing: ", cachedHashTags[randTag].tag, usedTags)
       // tag was already used, skip and do it again
       continue;
     }
     
     if((advert.length + cachedHashTags[randTag].length + 2) > 280) {
-    console.log("returning", advert);
       return advert;
     }
     advert += " #" + cachedHashTags[randTag].tag;
-    console.log(advert);
     usedTags.push(cachedHashTags[randTag].tag);
   }
 }
 
+function buildRandoTweet() {
+  //
+//        ex: You are in a British garden. In front of you is a private party. The babies are chanting. The dark is struggling to speak.
+  //      check to make sure it doesn't match babies and fucking
+  
+  var placeIndex = Math.floor((Math.random() * cachedPlaces.length));
+  var pluralNounIndex = Math.floor((Math.random() * cachedPluralNouns.length));
+  var verbing1Index = Math.floor((Math.random() * cachedVerbings.length));
+  while(cachedVerbings[verbing1Index] === 'fucking' && cachedPluralNouns[pluralNounIndex] === 'babies') {
+    pluralNounIndex = Math.floor((Math.random() * cachedPluralNouns.length));
+    verbing1Index = Math.floor((Math.random() * cachedVerbings.length));
+  }
+  var verbing2Index = Math.floor((Math.random() * cachedVerbings.length));
+  var nounIndex = Math.floor((Math.random() * cachedNouns.length));
+  var randoTweet = "Before you is a " + cachedPlaces[placeIndex].place + ". The " + cachedPluralNouns[pluralNounIndex].noun + " are " + 
+                    cachedVerbings[verbing1Index].verbing + ". The " + cachedNouns[nounIndex].noun + " is " + cachedVerbings[verbing2Index].verbing + "."; 
+  return randoTweet;
+}
+
 function tweetPlayer() {
   
-    if(fibonacciSequence[player] === 89 || fibonacciSequence[player] === 29) {
-      buildLink();
+    if(fibonacciSequence[player] === 2 || fibonacciSequence[player] === 21 || fibonacciSequence[player] === 55) {
+      tweetStatus(buildLink());
       // tweet the book ad
-    } else if ( (player % 2) === 0 )  {
+    } else if ( (player % 2) !== 0 )  {
       retweetAndLikeByTag('#iartg');
-      // even number index, retweet #iartg
+      // odd number index, retweet #iartg
     } else {
-      // odd number index, tinkering time with making a more useful tweet
-      retweetAndLikeByTag('#iartg');
+      tweetStatus(buildRandoTweet());
     }
   
     player++;
@@ -137,7 +149,7 @@ function fillCaches() {
   
   cachedBookTweets = [];
   cachedHashTags = [];
-  connection.connect();
+  // connection.connect();
   connection.query('select * from tweets', function (err, rows, fields) {
     if (err) throw err
     for(var i = 0; i < rows.length; i++) {
@@ -155,7 +167,42 @@ function fillCaches() {
     }
     console.log("book hashtags cache refilled!");
   });
-  connection.end
+  
+  connection.query('select * from nouns', function (err, rows, fields) {
+    if (err) throw err
+    for(var i = 0; i < rows.length; i++) {
+        var obj = rows[i];
+        cachedNouns.push(obj);
+    }
+    console.log("nouns cache refilled!");
+  });
+  
+  connection.query('select * from places', function (err, rows, fields) {
+    if (err) throw err
+    for(var i = 0; i < rows.length; i++) {
+        var obj = rows[i];
+        cachedPlaces.push(obj);
+    }
+    console.log("places cache refilled!");
+  });
+  
+  connection.query('select * from pluralNouns', function (err, rows, fields) {
+    if (err) throw err
+    for(var i = 0; i < rows.length; i++) {
+        var obj = rows[i];
+        cachedPluralNouns.push(obj);
+    }
+    console.log("pluralNouns cache refilled!");
+  });
+  
+  connection.query('select * from verbings', function (err, rows, fields) {
+    if (err) throw err
+    for(var i = 0; i < rows.length; i++) {
+        var obj = rows[i];
+        cachedVerbings.push(obj);
+    }
+    console.log("verbings cache refilled!");
+  });
 }
 
 function tryTweetLinks() {
@@ -180,18 +227,17 @@ var player = 0;
 // Otherwise, we'll hit Airtable's rate limit.
 var cachedBookTweets = [];
 var cachedHashTags = [];
+var cachedPlaces = [];
+var cachedPluralNouns = [];
+var cachedNouns = [];
+var cachedVerbings = [];
 
 var listener = app.listen(process.env.PORT, function () {
   console.log('Your bot is running on port ' + listener.address().port);
   console.log('startup tweet');
   fillCaches();
   //give ten seconds to fill the caches
-   setTimeout(tweetPlayer, 10000);
-   // setTimeout(tryTweetLinks, 3000);
-  /*
-  TODOS:5 tweet a random book link ad every on the 89 minute of fibonacci
-        7 random generate post
-  */
+  setTimeout(tweetPlayer, 10000);
   
   
 });
@@ -199,7 +245,6 @@ var listener = app.listen(process.env.PORT, function () {
 function retweetAndLikeByTag(hashTag) {
   T.get('search/tweets', { q: hashTag + ' -filter:retweets', count:3, result_type: 'recent' }, function(err, data, response) {
     if (err) throw err
-    console.log(data.statuses);
     for(var i = 0; i < data.statuses.length; i++) {
         likeTweet(data.statuses[i].id_str);
     }
