@@ -248,7 +248,13 @@ function retweetAndLikeByTag(hashTag) {
     for(var i = 0; i < data.statuses.length; i++) {
         likeTweet(data.statuses[i].id_str);
     }
-    retweet(data.statuses[0].id_str);
+    if(data.statuses[0] !== undefined && data.statuses[0].id_str !== undefined) {
+      // retweet able, retweet
+      retweet(data.statuses[0].id_str);
+    } else {
+      // can't retweet, shit tweet it again
+      tweetStatus(buildRandoTweet());
+    }
   });
   
 }
