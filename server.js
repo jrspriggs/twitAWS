@@ -118,22 +118,25 @@ function buildRandoTweet() {
   var verbing2Index = Math.floor((Math.random() * cachedVerbings.length));
   var nounIndex = Math.floor((Math.random() * cachedNouns.length));
   var randoTweet = "Before you is " + cachedPlaces[placeIndex].place + ". The " + cachedPluralNouns[pluralNounIndex].noun + " are " + 
-                    cachedVerbings[verbing1Index].verbing + ". The " + cachedNouns[nounIndex].noun + " is " + cachedVerbings[verbing2Index].verbing + ". #writingPrompts"; 
+                    cachedVerbings[verbing1Index].verbing + ". The " + cachedNouns[nounIndex].noun + " is " + cachedVerbings[verbing2Index].verbing + ". #writingPrompts #BadBookIdeas"; 
   return randoTweet;
 }
 
 function tweetPlayer() {
-  
+  try {
     if(fibonacciSequence[player] === 2 || fibonacciSequence[player] === 21 || fibonacciSequence[player] === 55) {
       tweetStatus(buildLink());
       // tweet the book ad
     } else if ( (player % 2) !== 0 )  {
       var randTag = Math.floor((Math.random() * cachedSourceTags.length));
-      retweetAndLikeByTag(cachedSourceTags[randTag]);
+      retweetAndLikeByTag(cachedSourceTags[randTag].sourceTag);
       // odd number index, retweet #iartg
     } else {
       tweetStatus(buildRandoTweet());
     }
+  } catch (err) {
+    console.log(err)
+  }
   
     player++;
     if(player >= fibonacciSequence.length) {
@@ -142,7 +145,12 @@ function tweetPlayer() {
       fillCaches();
       
     }
-    setTimeout(tweetPlayer, fibonacciSequence[player] * 60000);
+    var span = fibonacciSequence[player] - fibonacciSequence[player-1];
+    span = span <= 1 ? 1 : span;
+    var randomTimeout =  fibonacciSequence[player-1] + Math.floor((Math.random() * (span)));
+    randomTimeout = randomTimeout  < 1 ? 1 : randomTimeout;
+    console.log("next tweet in " + (randomTimeout ).toString(10) + " minutes");
+    setTimeout(tweetPlayer, randomTimeout * 60000);
     console.log("Next Player: ", player);
 }
 
@@ -150,6 +158,11 @@ function fillCaches() {
   
   cachedBookTweets = [];
   cachedHashTags = [];
+   cachedPlaces = [];
+   cachedPluralNouns = [];
+   cachedNouns = [];
+   cachedVerbings = [];
+   cachedSourceTags = [];
   // connection.connect();
   connection.query('select * from tweets', function (err, rows, fields) {
     if (err) throw err
@@ -250,18 +263,16 @@ var listener = app.listen(process.env.PORT, function () {
   //give ten seconds to fill the caches
   setTimeout(tweetPlayer, 10000);
   
-  
 });
 
 function retweetAndLikeByTag(hashTag) {
   T.get('search/tweets', { q: hashTag + ' -filter:retweets', count:3, result_type: 'recent' }, function(err, data, response) {
     if (err) throw err
-    for(var i = 0; i < data.statuses.length; i++) {
-        likeTweet(data.statuses[i].id_str);
-    }
+   
     if(data.statuses[0] !== undefined && data.statuses[0].id_str !== undefined) {
       // retweet able, retweet
       retweet(data.statuses[0].id_str);
+      likeTweet(data.statuses[0].id_str);
     } else {
       // can't retweet, shit tweet it again
       tweetStatus(buildRandoTweet());
