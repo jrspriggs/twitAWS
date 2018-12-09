@@ -34,6 +34,7 @@ app.use(express.static('public'));
 /* You can use uptimerobot.com or a similar site to hit your /BOT_ENDPOINT to wake up your app and make your Twitter bot tweet. */
 
 function tweetStatus(message) {
+  console.log("tweeting: ", message);
   T.post('statuses/update', { status: message }, function(err, data, response) {
     if (err){
       console.log('Error!');
@@ -102,6 +103,35 @@ function buildLink() {
     usedTags.push(cachedHashTags[randTag].tag);
   }
 }
+function buildTingler() {
+  //
+//        ex: verbing noun Pounded in the butt by verbing2 plural nouns at a place with noun2
+  
+  var placeIndex = Math.floor((Math.random() * cachedPlaces.length));
+  var pluralNounIndex = Math.floor((Math.random() * cachedPluralNouns.length));
+  var verbing1Index = Math.floor((Math.random() * cachedVerbings.length));
+  while(cachedPluralNouns[pluralNounIndex] === 'babies') {
+    pluralNounIndex = Math.floor((Math.random() * cachedPluralNouns.length));
+  }
+  //let's leave chuck out of this one
+  while(cachedPlaces[placeIndex] === 'the writing shed of @ChuckWendig') {
+    placeIndex = Math.floor((Math.random() * cachedPlaces.length));
+  }
+  var verbing2Index = Math.floor((Math.random() * cachedVerbings.length));
+  if(verbing2Index === verbing1Index) {
+    verbing2Index = Math.floor((Math.random() * cachedVerbings.length));
+  }
+  var nounIndex = Math.floor((Math.random() * cachedNouns.length));
+  var nounIndex2 = Math.floor((Math.random() * cachedNouns.length));
+  var randoTingler = '"A ' + cachedVerbings[verbing1Index].verbing + " " + cachedNouns[nounIndex].noun + " pounded in the butt by "  + cachedVerbings[verbing2Index].verbing + " " + cachedPluralNouns[pluralNounIndex].noun + " at " + cachedPlaces[placeIndex].place  + " with a " + cachedNouns[nounIndex2].noun + '" #writingPrompts #BadBookIdeas #tingler'; 
+  return toTitleCase(randoTingler);
+}
+
+function toTitleCase(str) {
+    return str.replace(/\w\S*/g, function(txt){
+        return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+    });
+}
 
 function buildRandoTweet() {
   //
@@ -116,23 +146,58 @@ function buildRandoTweet() {
     verbing1Index = Math.floor((Math.random() * cachedVerbings.length));
   }
   var verbing2Index = Math.floor((Math.random() * cachedVerbings.length));
+  if(verbing2Index === verbing1Index) {
+    verbing2Index = Math.floor((Math.random() * cachedVerbings.length));
+  }
   var nounIndex = Math.floor((Math.random() * cachedNouns.length));
   var randoTweet = "Before you is " + cachedPlaces[placeIndex].place + ". The " + cachedPluralNouns[pluralNounIndex].noun + " are " + 
                     cachedVerbings[verbing1Index].verbing + ". The " + cachedNouns[nounIndex].noun + " is " + cachedVerbings[verbing2Index].verbing + ". #writingPrompts #BadBookIdeas"; 
   return randoTweet;
 }
 
+function buildRandoTweet2() {
+  //
+//        ex: You are in a British garden. In front of you is a private party. The babies are chanting. The dark is struggling to speak.
+  //      check to make sure it doesn't match babies and fucking
+  
+  var placeIndex = Math.floor((Math.random() * cachedPlaces.length));
+  var pluralNounIndex = Math.floor((Math.random() * cachedPluralNouns.length));
+  var verbing1Index = Math.floor((Math.random() * cachedVerbings.length));
+  while(cachedVerbings[verbing1Index] === 'fucking' && cachedPluralNouns[pluralNounIndex] === 'babies') {
+    pluralNounIndex = Math.floor((Math.random() * cachedPluralNouns.length));
+    verbing1Index = Math.floor((Math.random() * cachedVerbings.length));
+  }
+  var verbing2Index = Math.floor((Math.random() * cachedVerbings.length));
+  if(verbing2Index === verbing1Index) {
+    verbing2Index = Math.floor((Math.random() * cachedVerbings.length));
+  }
+  var nounIndex = Math.floor((Math.random() * cachedNouns.length));
+  var randoTweet = "You suddenly appear at " + cachedPlaces[placeIndex].place + ". You can see " + cachedPluralNouns[pluralNounIndex].noun + " " + 
+                    cachedVerbings[verbing1Index].verbing + ". You are being challenged by a " + cachedVerbings[verbing2Index].verbing + " " + cachedNouns[nounIndex].noun + ". #writingPrompts #BadBookIdeas"; 
+  return randoTweet;
+}
+
+
+
 function tweetPlayer() {
   try {
-    if(fibonacciSequence[player] === 2 || fibonacciSequence[player] === 21 || fibonacciSequence[player] === 55) {
+    if(fibonacciSequence[player] === 21) {
       tweetStatus(buildLink());
+      // tweet the book ad
+     } else if(fibonacciSequence[player] === 2) {
+      tweetStatus(buildTingler());
       // tweet the book ad
     } else if ( (player % 2) !== 0 )  {
       var randTag = Math.floor((Math.random() * cachedSourceTags.length));
       retweetAndLikeByTag(cachedSourceTags[randTag].sourceTag);
       // odd number index, retweet #iartg
     } else {
-      tweetStatus(buildRandoTweet());
+      var randTag = Math.floor((Math.random() * 2));
+      if(randTag === 1) {
+        tweetStatus(buildRandoTweet());
+      } else {
+        tweetStatus(buildRandoTweet2());
+      }
     }
   } catch (err) {
     console.log(err)
@@ -218,7 +283,7 @@ function fillCaches() {
     console.log("verbings cache refilled!");
   });
   
-  connection.query('select * from sourceTags', function (err, rows, fields) {
+  connection.query('select * from sourceTags where id = 3', function (err, rows, fields) {
     if (err) throw err
     for(var i = 0; i < rows.length; i++) {
         var obj = rows[i];
