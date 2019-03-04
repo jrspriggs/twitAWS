@@ -48,6 +48,21 @@ function tweetStatus(message) {
   });
 }
 
+function tweetStatusWithCard(message, card_uri) {
+  console.log("tweeting: ", message);
+  T.post('statuses/update', { status: message, card_uri: card_uri }, function(err, data, response) {
+    if (err){
+      console.log('Error!');
+      console.log(err);
+      console.log();
+    }
+    else{
+      console.log('success!');
+      console.log("tweeted: ", message);
+    }
+  });
+}
+
 function followed(eventMessage) {
   var name = eventMessage.source.name;
   var screenName = eventMessage.source.screen_name;
@@ -97,7 +112,7 @@ function buildLink() {
     }
     
     if((advert.length + cachedHashTags[randTag].length + 2) > 280) {
-      return advert;
+      tweetStatusWithCard(advert, cachedBookTweets[y].card_uri);
     }
     advert += " #" + cachedHashTags[randTag].tag;
     usedTags.push(cachedHashTags[randTag].tag);
@@ -123,7 +138,7 @@ function buildTingler() {
   }
   var nounIndex = Math.floor((Math.random() * cachedNouns.length));
   var nounIndex2 = Math.floor((Math.random() * cachedNouns.length));
-  var randoTingler = '"A ' + cachedVerbings[verbing1Index].verbing + " " + cachedNouns[nounIndex].noun + " pounded in the butt by "  + cachedVerbings[verbing2Index].verbing + " " + cachedPluralNouns[pluralNounIndex].noun + " at " + cachedPlaces[placeIndex].place  + " with a " + cachedNouns[nounIndex2].noun + '" #writingPrompts #BadBookIdeas #tingler'; 
+  var randoTingler = '"A ' + cachedVerbings[verbing1Index].verbing + " " + cachedNouns[nounIndex].noun + " pounded in the butt by "  + cachedVerbings[verbing2Index].verbing + " " + cachedPluralNouns[pluralNounIndex].noun + " at " + cachedPlaces[placeIndex].place  + " with a " + cachedNouns[nounIndex2].noun + '" #writingPrompts #BadStoryIdeas #tingler'; 
   return toTitleCase(randoTingler);
 }
 
@@ -131,6 +146,12 @@ function toTitleCase(str) {
     return str.replace(/\w\S*/g, function(txt){
         return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
     });
+}
+
+function ILikeTweet() {
+  var nounIndex = Math.floor((Math.random() * cachedNouns.length));
+  var randoTweet = "I like " + cachedNouns[nounIndex].noun + ". #ThingsILike"; 
+  return randoTweet;
 }
 
 function buildRandoTweet() {
@@ -151,7 +172,7 @@ function buildRandoTweet() {
   }
   var nounIndex = Math.floor((Math.random() * cachedNouns.length));
   var randoTweet = "Before you is " + cachedPlaces[placeIndex].place + ". The " + cachedPluralNouns[pluralNounIndex].noun + " are " + 
-                    cachedVerbings[verbing1Index].verbing + ". The " + cachedNouns[nounIndex].noun + " is " + cachedVerbings[verbing2Index].verbing + ". #writingPrompts #BadBookIdeas"; 
+                    cachedVerbings[verbing1Index].verbing + ". The " + cachedNouns[nounIndex].noun + " is " + cachedVerbings[verbing2Index].verbing + ". #writingPrompts #BadStoryIdeas #Mondays"; 
   return randoTweet;
 }
 
@@ -173,7 +194,7 @@ function buildRandoTweet2() {
   }
   var nounIndex = Math.floor((Math.random() * cachedNouns.length));
   var randoTweet = "You suddenly appear at " + cachedPlaces[placeIndex].place + ". You can see " + cachedPluralNouns[pluralNounIndex].noun + " " + 
-                    cachedVerbings[verbing1Index].verbing + ". You are being challenged by a " + cachedVerbings[verbing2Index].verbing + " " + cachedNouns[nounIndex].noun + ". #writingPrompts #BadBookIdeas"; 
+                    cachedVerbings[verbing1Index].verbing + ". You are being challenged by a " + cachedVerbings[verbing2Index].verbing + " " + cachedNouns[nounIndex].noun + ". #writingPrompts #BadStoryIdeas #Mondays"; 
   return randoTweet;
 }
 
@@ -182,10 +203,13 @@ function buildRandoTweet2() {
 function tweetPlayer() {
   try {
     if(fibonacciSequence[player] === 21) {
-      tweetStatus(buildLink());
+      buildLink();
       // tweet the book ad
      } else if(fibonacciSequence[player] === 2) {
       tweetStatus(buildTingler());
+      // tweet the book ad 
+    } else if(fibonacciSequence[player] === 89) {
+      tweetStatus(ILikeTweet());
       // tweet the book ad
     } else if ( (player % 2) !== 0 )  {
       var randTag = Math.floor((Math.random() * cachedSourceTags.length));
@@ -327,7 +351,6 @@ var listener = app.listen(process.env.PORT, function () {
   fillCaches();
   //give ten seconds to fill the caches
   setTimeout(tweetPlayer, 10000);
-  
 });
 
 function retweetAndLikeByTag(hashTag) {
