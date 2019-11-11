@@ -49,12 +49,12 @@ function tweetStatus(message) {
 }
 
 function tweetStatusWithCard(message, card_uri) {
-  console.log("tweeting: ", message);
+  console.log("tweeting: ", message, "card:", card_uri);
   T.post('statuses/update', { status: message, card_uri: card_uri }, function(err, data, response) {
     if (err){
       console.log('Error!');
       console.log(err);
-      console.log();
+      console.log(err.twitterReply.errors);
     }
     else{
       console.log('success!');
@@ -97,27 +97,54 @@ function likeTweet(id) {
   })
 }
 
+
 function buildLink() {
   var y = Math.floor((Math.random() * cachedBookTweets.length));
   var advert = cachedBookTweets[y].tweet;
+  var tagCount = 0;
   //add the link
-  advert += " https://www.amazon.com/dp/" + cachedBookTweets[y].ASIN
+    // += " #kindleUnlimited";
+    console.log("ad base:", advert);
+    console.log("card_uri and len: " , cachedBookTweets[y].card_uri, " ", cachedBookTweets[y].card_uri.length);
+  if(cachedBookTweets[y].card_uri.length < 2) {
+    advert += " https://www.amazon.com/dp/" + cachedBookTweets[y].ASIN
+  } 
   var usedTags = [];
-  while(advert.length < 280) {
+  console.log(advert.length);
+  while(advert.length < 300 && tagCount < 3) {
     // add hashtags until the ad is filled
     var randTag = Math.floor((Math.random() * cachedHashTags.length));
+    console.log(cachedHashTags[randTag].tag);
     if(usedTags.indexOf(cachedHashTags[randTag].tag) >= 0) {
       // tag was already used, skip and do it again
       continue;
     }
     
-    if((advert.length + cachedHashTags[randTag].length + 2) > 280) {
+    //check if it's one of my books or someone elses, skip tag if it's somebody else's book and this isn't a general tag
+    //if(cachedHashTags[randTag].general === 0 && (cachedBookTweets[y].ASIN === 'B07DB15B2F' ||cachedBookTweets[y].ASIN === 'B07H65HX56')) {
+  //    continue;
+    //}
+    
+    if((advert.length + cachedHashTags[randTag].length + 2) > 280 || tagCount == 2) {
       tweetStatusWithCard(advert, cachedBookTweets[y].card_uri);
     }
     advert += " #" + cachedHashTags[randTag].tag;
+    tagCount = tagCount + 1;
     usedTags.push(cachedHashTags[randTag].tag);
   }
 }
+
+function buildMediumLink() {
+  var y = Math.floor((Math.random() * cachedMediumTweets.length));
+  var advert = cachedMediumTweets[y].tweet;
+  var tagCount = 0;
+  //add the link
+    console.log("medium ad base:", advert);
+    advert += " " + cachedMediumTweets[y].mediumUrl;
+  console.log(advert.length);
+      tweetStatus(advert);
+}
+
 function buildTingler() {
   //
 //        ex: verbing noun Pounded in the butt by verbing2 plural nouns at a place with noun2
@@ -154,6 +181,22 @@ function ILikeTweet() {
   return randoTweet;
 }
 
+function indyCodeRandoTweet2() {
+
+  var pluralNounIndex = Math.floor((Math.random() * cachedPluralNouns.length));
+  var nounIndex = Math.floor((Math.random() * cachedNouns.length));
+  var randoTweet = "Looking for a " +  cachedNouns[nounIndex].noun + " from the vendor swag at #indyCode this week. But will I find it? 🤔"; 
+  return randoTweet;
+}
+
+function indyCodeRandoTweet() {
+
+  var pluralNounIndex = Math.floor((Math.random() * cachedPluralNouns.length));
+  var nounIndex = Math.floor((Math.random() * cachedNouns.length));
+  var randoTweet = "Will I find a " +  cachedNouns[nounIndex].noun + " or " +  cachedPluralNouns[pluralNounIndex].noun + " while I attend #indyCode this week? Maybe my Conjurer will finally learn machine learning so I can answer it myself."; 
+  return randoTweet;
+}
+
 function buildRandoTweet() {
   //
 //        ex: You are in a British garden. In front of you is a private party. The babies are chanting. The dark is struggling to speak.
@@ -172,7 +215,7 @@ function buildRandoTweet() {
   }
   var nounIndex = Math.floor((Math.random() * cachedNouns.length));
   var randoTweet = "Before you is " + cachedPlaces[placeIndex].place + ". The " + cachedPluralNouns[pluralNounIndex].noun + " are " + 
-                    cachedVerbings[verbing1Index].verbing + ". The " + cachedNouns[nounIndex].noun + " is " + cachedVerbings[verbing2Index].verbing + ". #writingPrompts #BadStoryIdeas #Mondays"; 
+                    cachedVerbings[verbing1Index].verbing + ". The " + cachedNouns[nounIndex].noun + " is " + cachedVerbings[verbing2Index].verbing + ". #writingPrompts #BadStoryIdeas"; 
   return randoTweet;
 }
 
@@ -194,7 +237,7 @@ function buildRandoTweet2() {
   }
   var nounIndex = Math.floor((Math.random() * cachedNouns.length));
   var randoTweet = "You suddenly appear at " + cachedPlaces[placeIndex].place + ". You can see " + cachedPluralNouns[pluralNounIndex].noun + " " + 
-                    cachedVerbings[verbing1Index].verbing + ". You are being challenged by a " + cachedVerbings[verbing2Index].verbing + " " + cachedNouns[nounIndex].noun + ". #writingPrompts #BadStoryIdeas #Mondays"; 
+                    cachedVerbings[verbing1Index].verbing + ". You are being challenged by a " + cachedVerbings[verbing2Index].verbing + " " + cachedNouns[nounIndex].noun + ". #writingPrompts #BadStoryIdeas"; 
   return randoTweet;
 }
 
@@ -206,7 +249,9 @@ function tweetPlayer() {
       buildLink();
       // tweet the book ad
      } else if(fibonacciSequence[player] === 2) {
-      tweetStatus(buildTingler());
+      //tweetStatus(buildTingler());
+      buildMediumLink();
+        //tweetStatus(buildRandoTweet());
       // tweet the book ad 
     } else if(fibonacciSequence[player] === 89) {
       tweetStatus(ILikeTweet());
@@ -218,9 +263,14 @@ function tweetPlayer() {
     } else {
       var randTag = Math.floor((Math.random() * 2));
       if(randTag === 1) {
+        //tweetStatus(indyCodeRandoTweet2());
         tweetStatus(buildRandoTweet());
       } else {
+        //tweetStatus(indyCodeRandoTweet());
         tweetStatus(buildRandoTweet2());
+        
+        var randTag = Math.floor((Math.random() * cachedSourceTags.length));
+        retweetAndLikeByTag(cachedSourceTags[randTag].sourceTag);
       }
     }
   } catch (err) {
@@ -252,7 +302,16 @@ function fillCaches() {
    cachedNouns = [];
    cachedVerbings = [];
    cachedSourceTags = [];
+   cachedMediumTweets = [];
   // connection.connect();
+  connection.query('select * from mediumTweets', function (err, rows, fields) {
+    if (err) throw err
+    for(var i = 0; i < rows.length; i++) {
+        var obj = rows[i];
+        cachedMediumTweets.push(obj);
+    }
+    console.log("medium tweets cache refilled!");
+  });
   connection.query('select * from tweets', function (err, rows, fields) {
     if (err) throw err
     for(var i = 0; i < rows.length; i++) {
@@ -262,7 +321,7 @@ function fillCaches() {
     console.log("book tweets cache refilled!");
   });
   
-  connection.query('select * from hashtags', function (err, rows, fields) {
+  connection.query('select * from hashtags where general = 1', function (err, rows, fields) {
     if (err) throw err
     for(var i = 0; i < rows.length; i++) {
         var obj = rows[i];
@@ -307,7 +366,7 @@ function fillCaches() {
     console.log("verbings cache refilled!");
   });
   
-  connection.query('select * from sourceTags where id = 3', function (err, rows, fields) {
+  connection.query('select * from sourceTags where id in (3,4,5)', function (err, rows, fields) {
     if (err) throw err
     for(var i = 0; i < rows.length; i++) {
         var obj = rows[i];
@@ -344,13 +403,15 @@ var cachedPluralNouns = [];
 var cachedNouns = [];
 var cachedVerbings = [];
 var cachedSourceTags = [];
+var cachedMediumTweets = [];
 
 var listener = app.listen(process.env.PORT, function () {
   console.log('Your bot is running on port ' + listener.address().port);
   console.log('startup tweet');
   fillCaches();
   //give ten seconds to fill the caches
-  setTimeout(tweetPlayer, 10000);
+  setTimeout(tweetPlayer, 5000);
+  //setTimeout(buildLink, 5000);
 });
 
 function retweetAndLikeByTag(hashTag) {
