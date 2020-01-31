@@ -97,17 +97,16 @@ function likeTweet(id) {
   })
 }
 
-
-function buildLink() {
-  var y = Math.floor((Math.random() * cachedBookTweets.length));
-  var advert = cachedBookTweets[y].tweet;
+function buildLink(tweetArray) {
+  var y = Math.floor((Math.random() * tweetArray.length));
+  var advert = tweetArray[y].tweet;
   var tagCount = 0;
   //add the link
     // += " #kindleUnlimited";
     console.log("ad base:", advert);
-    console.log("card_uri and len: " , cachedBookTweets[y].card_uri, " ", cachedBookTweets[y].card_uri.length);
-  if(cachedBookTweets[y].card_uri.length < 2) {
-    advert += " https://www.amazon.com/dp/" + cachedBookTweets[y].ASIN
+    console.log("card_uri and len: " , tweetArray[y].card_uri, " ", tweetArray[y].card_uri.length);
+  if(tweetArray[y].card_uri.length < 2) {
+    advert += " https://www.amazon.com/dp/" + tweetArray[y].ASIN
   } 
   var usedTags = [];
   console.log(advert.length);
@@ -121,12 +120,12 @@ function buildLink() {
     }
     
     //check if it's one of my books or someone elses, skip tag if it's somebody else's book and this isn't a general tag
-    //if(cachedHashTags[randTag].general === 0 && (cachedBookTweets[y].ASIN === 'B07DB15B2F' ||cachedBookTweets[y].ASIN === 'B07H65HX56')) {
+    //if(cachedHashTags[randTag].general === 0 && (tweetArray[y].ASIN === 'B07DB15B2F' ||tweetArray[y].ASIN === 'B07H65HX56')) {
   //    continue;
     //}
     
     if((advert.length + cachedHashTags[randTag].length + 2) > 280 || tagCount == 2) {
-      tweetStatusWithCard(advert, cachedBookTweets[y].card_uri);
+      tweetStatusWithCard(advert, tweetArray[y].card_uri);
     }
     advert += " #" + cachedHashTags[randTag].tag;
     tagCount = tagCount + 1;
@@ -246,7 +245,7 @@ function buildRandoTweet2() {
 function tweetPlayer() {
   try {
     if(fibonacciSequence[player] === 21) {
-      buildLink();
+      buildLink(cachedBookTweets);
       // tweet the book ad
      } else if(fibonacciSequence[player] === 2) {
       //tweetStatus(buildTingler());
@@ -254,7 +253,8 @@ function tweetPlayer() {
         //tweetStatus(buildRandoTweet());
       // tweet the book ad 
     } else if(fibonacciSequence[player] === 89) {
-      tweetStatus(ILikeTweet());
+      //tweetStatus(ILikeTweet());
+      buildLink(cachedADITweets);
       // tweet the book ad
     } else if ( (player % 2) !== 0 )  {
       var randTag = Math.floor((Math.random() * cachedSourceTags.length));
@@ -303,6 +303,7 @@ function fillCaches() {
    cachedVerbings = [];
    cachedSourceTags = [];
    cachedMediumTweets = [];
+   cachedADITweets = [];
   // connection.connect();
   connection.query('select * from mediumTweets', function (err, rows, fields) {
     if (err) throw err
@@ -312,13 +313,21 @@ function fillCaches() {
     }
     console.log("medium tweets cache refilled!");
   });
-  connection.query('select * from tweets', function (err, rows, fields) {
+  connection.query('select * from tweets where id < 40', function (err, rows, fields) {
     if (err) throw err
     for(var i = 0; i < rows.length; i++) {
         var obj = rows[i];
         cachedBookTweets.push(obj);
     }
     console.log("book tweets cache refilled!");
+  });
+  connection.query('select * from tweets where id >= 40', function (err, rows, fields) {
+    if (err) throw err
+    for(var i = 0; i < rows.length; i++) {
+        var obj = rows[i];
+        cachedADITweets.push(obj);
+    }
+    console.log("ADI tweets cache refilled!");
   });
   
   connection.query('select * from hashtags where general = 1', function (err, rows, fields) {
@@ -377,10 +386,10 @@ function fillCaches() {
 }
 
 function tryTweetLinks() {
-  var link1 = buildLink();
-  var link2 = buildLink();
-  var link3 = buildLink();
-  var link4 = buildLink();
+  var link1 = buildLink(cachedBookTweets);
+  var link2 = buildLink(cachedBookTweets);
+  var link3 = buildLink(cachedBookTweets);
+  var link4 = buildLink(cachedBookTweets);
   console.log("tweet 1", link1);
   console.log("tweet 1 length", link1.length);
   console.log("tweet 2", link2);
@@ -397,6 +406,7 @@ var player = 0;
 // Cache the records in case we get a lot of traffic.
 // Otherwise, we'll hit Airtable's rate limit.
 var cachedBookTweets = [];
+var cachedADITweets = [];
 var cachedHashTags = [];
 var cachedPlaces = [];
 var cachedPluralNouns = [];
@@ -405,14 +415,35 @@ var cachedVerbings = [];
 var cachedSourceTags = [];
 var cachedMediumTweets = [];
 
-var listener = app.listen(process.env.PORT, function () {
+function getRandomRow(tableName, columnName, whereClause, callback) {
+  var queryString =`select ${columnName} as theColumn from ${tableName} ${whereClause} ORDER BY RAND() LIMIT 1 `; 
+  var returnValue = '';
+  console.log(queryString);
+  return new Promise(function(resolve, reject){
+    connection.query(queryString, function (err, rows, fields) {
+    if (err) reject(new Error("Error rows is undefined"));
+    console.log("blarg",rows[0].theColumn);
+    if( rows.length > 0) {
+      returnValue = rows[0].theColumn;
+    }
+    resolve(returnValue);
+  })});
+  
+}
+
+var listener = app.listen(process.env.PORT, async function () {
   console.log('Your bot is running on port ' + listener.address().port);
   console.log('startup tweet');
+  console.log(await getRandomRow('pluralNouns', 'noun', ''));
   fillCaches();
   //give ten seconds to fill the caches
   setTimeout(tweetPlayer, 5000);
-  //setTimeout(buildLink, 5000);
+  //setTimeout(shortcutCall, 5000);
 });
+
+function shortcutCall() {
+  buildLink(cachedADITweets);
+}
 
 function retweetAndLikeByTag(hashTag) {
   T.get('search/tweets', { q: hashTag + ' -filter:retweets', count:3, result_type: 'recent' }, function(err, data, response) {
