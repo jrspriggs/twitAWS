@@ -157,23 +157,22 @@ async function buildRandoTweet() {
 async function tweetPlayer() {
   try {
     if(fibonacciSequence[player] === 21) {
+      //tweet a book advertisement
       buildLink(cachedBookTweets);
-      // tweet the book ad
      } else if(fibonacciSequence[player] === 2) {
+      // tweet a medium link
       buildMediumLink();
-        //tweetStatus(buildRandoTweet());
       // tweet the book ad 
     } else if(fibonacciSequence[player] === 89) {
-      //tweetStatus(ILikeTweet());
+      //tweet a different book advertisement
       buildLink(cachedADITweets);
-      // tweet the book ad
-    } else if ( (player % 2) !== 0 )  {
-      var randTag = Math.floor((Math.random() * cachedSourceTags.length));
-      retweetAndLikeByTag(cachedSourceTags[randTag].sourceTag);
-      // odd number index, retweet #iartg
     } else {
-      //randomly choose to build one of the weird story idea tweets
-      tweetStatus(await buildRandoTweet());
+      //if not a specific index of fibonnaci sequence, then look at index number
+      //even numbers will make a random tweet that is a writing prompt
+      if ( (player % 2) === 0 )  {
+        //randomly choose to build one of the weird story idea tweets
+        tweetStatus(await buildRandoTweet());
+      }
       
       // also retweet and like something by a random hash tag
       var randTag = Math.floor((Math.random() * cachedSourceTags.length));
