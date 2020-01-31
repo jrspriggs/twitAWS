@@ -39,9 +39,7 @@ function tweetStatus(message, card_uri) {
   }
   T.post('statuses/update', { status: message, card_uri: card_uri }, function(err, data, response) {
     if (err){
-      console.log('Error!');
-      console.log(err);
-      console.log(err.twitterReply.errors);
+      dumpErrorConsole(err)
     }
     else{
       console.log('success!');
@@ -59,9 +57,7 @@ function retweet(id) {
   console.log(id);
   T.post('statuses/retweet/:id', { id: id }, function (err, data, response) {
     if (err){
-      console.log('Error!');
-      console.log(err);
-      console.log();
+      dumpErrorConsole(err)
     }
   })
 }
@@ -70,9 +66,7 @@ function likeTweet(id) {
   console.log("liking: ", id);
   T.post('favorites/create', { id: id }, function (err, data, response) {
     if (err){
-      console.log('Error!');
-      console.log(err);
-      console.log();
+      dumpErrorConsole(err)
     }
   })
 }
@@ -184,6 +178,48 @@ function retweetAndLikeByTag(hashTag) {
   
 }
 
+//called to parse the list of followers and followings to followback any new followers automatically.
+function followBacks() {
+  var followers = [];
+  var friends = [];
+  var newFriends = [];
+  T.get('followers/ids', { screen_name: process.env.twitHandle },  function (err, data, response) {
+    if (err){
+      dumpErrorConsole(err);
+    } else {
+      followers = data.ids;
+      T.get('friends/ids', { screen_name: process.env.twitHandle },  function (err, data, response) {
+        if (err){
+          dumpErrorConsole(err);
+        } else {
+          friends = data.ids;
+          
+          newFriends = followers.filter(n => !friends.includes(n));
+          console.log(newFriends);
+        
+          newFriends.forEach( function(value) {
+            T.post('friendships/create', {user_id:value}, function(err, data, response) {
+              if (err){
+                dumpErrorConsole(err);
+              }
+              else{
+                console.log('success!');
+                console.log("friended: ", value);
+              }
+            });
+          })
+        }
+      })
+    }
+  })
+}
+
+function dumpErrorConsole(err) {
+    console.log('Error!');
+    console.log(err);
+    console.log(err.twitterReply.errors);
+}
+
 async function tweetPlayer() {
   try {
     if(fibonacciSequence[player] === 21) {
@@ -192,7 +228,8 @@ async function tweetPlayer() {
      } else if(fibonacciSequence[player] === 2) {
       // tweet a medium link
       buildMediumLink();
-      // tweet the book ad 
+      // run the followbacks once a sequence
+      followBacks();
     } else if(fibonacciSequence[player] === 89) {
       //tweet a different book advertisement
       buildLink('where id >= 40');
