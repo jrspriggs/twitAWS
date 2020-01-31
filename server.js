@@ -26,25 +26,17 @@ var path = require('path'),
 
 app.use(express.static('public'));
 
-/* You can use uptimerobot.com or a similar site to hit your /BOT_ENDPOINT to wake up your app and make your Twitter bot tweet. */
 
-function tweetStatus(message) {
-  console.log("tweeting: ", message);
-  T.post('statuses/update', { status: message }, function(err, data, response) {
-    if (err){
-      console.log('Error!');
-      console.log(err);
-      console.log();
-    }
-    else{
-      console.log('success!');
-      console.log("tweeted: ", message);
-    }
-  });
-}
+var fibonacciSequence = [1,1,2,3,5,8,13,21,34,55,89];
+var player = 0;
 
-function tweetStatusWithCard(message, card_uri) {
+
+function tweetStatus(message, card_uri) {
   console.log("tweeting: ", message, "card:", card_uri);
+  var options= { status: message};
+  if(card_uri != undefined) {
+    options.card_uri = card_uri
+  }
   T.post('statuses/update', { status: message, card_uri: card_uri }, function(err, data, response) {
     if (err){
       console.log('Error!');
@@ -61,7 +53,6 @@ function tweetStatusWithCard(message, card_uri) {
 app.all("/" + process.env.BOT_ENDPOINT, function (request, response) {
 /* The example below tweets out "Hello world! in case anyone tries to talk to this bot". */
   var resp = response;
-  tweetStatus('hello world 👋');
 });
 
 function retweet(id) {
@@ -86,50 +77,36 @@ function likeTweet(id) {
   })
 }
 
-function buildLink(tweetArray) {
-  var y = Math.floor((Math.random() * tweetArray.length));
-  var advert = tweetArray[y].tweet;
+async function buildLink(whereClause) {
+  var baseTweet = await getRandomFullRow('tweets', whereClause)
+  var advert = baseTweet.tweet;
   var tagCount = 0;
   //add the link
-    // += " #kindleUnlimited";
     console.log("ad base:", advert);
-    console.log("card_uri and len: " , tweetArray[y].card_uri, " ", tweetArray[y].card_uri.length);
-  if(tweetArray[y].card_uri.length < 2) {
-    advert += " https://www.amazon.com/dp/" + tweetArray[y].ASIN
+  if(baseTweet.card_uri.length < 2) {
+    advert += " https://www.amazon.com/dp/" + baseTweet.ASIN
   } 
   var usedTags = [];
-  console.log(advert.length);
   while(advert.length < 300 && tagCount < 3) {
     // add hashtags until the ad is filled
-    var randTag = Math.floor((Math.random() * cachedHashTags.length));
-    console.log(cachedHashTags[randTag].tag);
-    if(usedTags.indexOf(cachedHashTags[randTag].tag) >= 0) {
+    var tag = await getRandomRow('hashtags', 'hashtag', 'where general = 1');
+    if(usedTags.indexOf(tag) >= 0) {
       // tag was already used, skip and do it again
       continue;
     }
-    
-    //check if it's one of my books or someone elses, skip tag if it's somebody else's book and this isn't a general tag
-    //if(cachedHashTags[randTag].general === 0 && (tweetArray[y].ASIN === 'B07DB15B2F' ||tweetArray[y].ASIN === 'B07H65HX56')) {
-  //    continue;
-    //}
-    
-    if((advert.length + cachedHashTags[randTag].length + 2) > 280 || tagCount == 2) {
-      tweetStatusWithCard(advert, tweetArray[y].card_uri);
+    if((advert.length + tag.length + 2) > 280 || tagCount == 2) {
+      tweetStatus(advert, baseTweet.card_uri);
     }
-    advert += " #" + cachedHashTags[randTag].tag;
+    advert += " #" + tag;
     tagCount = tagCount + 1;
-    usedTags.push(cachedHashTags[randTag].tag);
+    usedTags.push(tag);
   }
 }
 
-function buildMediumLink() {
-  var y = Math.floor((Math.random() * cachedMediumTweets.length));
-  var advert = cachedMediumTweets[y].tweet;
-  var tagCount = 0;
-  //add the link
-    console.log("medium ad base:", advert);
-    advert += " " + cachedMediumTweets[y].mediumUrl;
-  console.log(advert.length);
+async function buildMediumLink() {
+  var mediumTweet = await getRandomFullRow('mediumTweets','');
+  var advert = `${mediumTweet.tweet} ${mediumTweet.mediumUrl}`;
+  console.log(advert, advert.length);
       tweetStatus(advert);
 }
 
@@ -139,9 +116,8 @@ function toTitleCase(str) {
     });
 }
 
-function ILikeTweet() {
-  var nounIndex = Math.floor((Math.random() * cachedNouns.length));
-  var randoTweet = "I like " + cachedNouns[nounIndex].noun + ". #ThingsILike"; 
+async function ILikeTweet() {
+  var randoTweet = "I like " + await getRandomRow('nouns', 'noun', '') + ". #ThingsILike"; 
   return randoTweet;
 }
 
@@ -151,124 +127,6 @@ async function buildRandoTweet() {
   var randoTweet =  await buildTweetText(tweet);
   return randoTweet;
 }
-
-
-
-async function tweetPlayer() {
-  try {
-    if(fibonacciSequence[player] === 21) {
-      //tweet a book advertisement
-      buildLink(cachedBookTweets);
-     } else if(fibonacciSequence[player] === 2) {
-      // tweet a medium link
-      buildMediumLink();
-      // tweet the book ad 
-    } else if(fibonacciSequence[player] === 89) {
-      //tweet a different book advertisement
-      buildLink(cachedADITweets);
-    } else {
-      //if not a specific index of fibonnaci sequence, then look at index number
-      //even numbers will make a random tweet that is a writing prompt
-      if ( (player % 2) === 0 )  {
-        //randomly choose to build one of the weird story idea tweets
-        tweetStatus(await buildRandoTweet());
-      }
-      
-      // also retweet and like something by a random hash tag
-      var randTag = Math.floor((Math.random() * cachedSourceTags.length));
-      retweetAndLikeByTag(cachedSourceTags[randTag].sourceTag);
-    }
-  } catch (err) {
-    console.log(err)
-  }
-  
-    player++;
-    if(player >= fibonacciSequence.length) {
-      player = 0;
-      //refill caches
-      fillCaches();
-      
-    }
-    // measure the distance between the last used and next number in the sequence
-    var span = fibonacciSequence[player] - fibonacciSequence[player-1];
-    //make sure the number is always at leas one
-    span = span <= 1 ? 1 : span;
-    // find a random number in that span to be the next timeout
-    var randomTimeout =  fibonacciSequence[player-1] + Math.floor((Math.random() * (span)));
-    randomTimeout = randomTimeout  < 1 ? 1 : randomTimeout;
-    
-    console.log("next tweet in " + (randomTimeout ).toString(10) + " minutes");
-    //the next tweet will occur X minutes where x is somewhere in that span of the fibonacci sequence
-    setTimeout(tweetPlayer, randomTimeout * 60000);
-}
-
-function fillCaches() {
-  
-  cachedBookTweets = [];
-  cachedHashTags = [];
-   cachedSourceTags = [];
-   cachedMediumTweets = [];
-   cachedADITweets = [];
-  // connection.connect();
-  connection.query('select * from mediumTweets', function (err, rows, fields) {
-    if (err) throw err
-    for(var i = 0; i < rows.length; i++) {
-        var obj = rows[i];
-        cachedMediumTweets.push(obj);
-    }
-    console.log("medium tweets cache refilled!");
-  });
-  connection.query('select * from tweets where id < 40', function (err, rows, fields) {
-    if (err) throw err
-    for(var i = 0; i < rows.length; i++) {
-        var obj = rows[i];
-        cachedBookTweets.push(obj);
-    }
-    console.log("book tweets cache refilled!");
-  });
-  connection.query('select * from tweets where id >= 40', function (err, rows, fields) {
-    if (err) throw err
-    for(var i = 0; i < rows.length; i++) {
-        var obj = rows[i];
-        cachedADITweets.push(obj);
-    }
-    console.log("ADI tweets cache refilled!");
-  });
-  
-  connection.query('select * from hashtags where general = 1', function (err, rows, fields) {
-    if (err) throw err
-    for(var i = 0; i < rows.length; i++) {
-        var obj = rows[i];
-        cachedHashTags.push(obj);
-    }
-    console.log("book hashtags cache refilled!");
-  });
-  
-  
-  connection.query('select * from sourceTags where id in (3,4,5)', function (err, rows, fields) {
-    if (err) throw err
-    for(var i = 0; i < rows.length; i++) {
-        var obj = rows[i];
-        cachedSourceTags.push(obj);
-    }
-    console.log("source tags cache refilled!");
-  });
-}
-
-var fibonacciSequence = [1,1,2,3,5,8,13,21,34,55,89];
-var player = 0;
-
-// Cache the records in case we get a lot of traffic.
-// Otherwise, we'll hit Airtable's rate limit.
-var cachedBookTweets = [];
-var cachedADITweets = [];
-var cachedHashTags = [];
-var cachedPlaces = [];
-var cachedPluralNouns = [];
-var cachedNouns = [];
-var cachedVerbings = [];
-var cachedSourceTags = [];
-var cachedMediumTweets = [];
 
 function getRandomRow(tableName, columnName, whereClause) {
   var queryString =`select ${columnName} as theColumn from ${tableName} ${whereClause} ORDER BY RAND() LIMIT 1 `; 
@@ -281,7 +139,19 @@ function getRandomRow(tableName, columnName, whereClause) {
     }
     resolve(returnValue);
   })});
-  
+}
+
+function getRandomFullRow(tableName, whereClause) {
+  var queryString =`select * from ${tableName} ${whereClause} ORDER BY RAND() LIMIT 1 `; 
+  var returnValue = '';
+  return new Promise(function(resolve, reject){
+    connection.query(queryString, function (err, rows, fields) {
+    if (err) reject(new Error("Error rows is undefined"));
+    if( rows.length > 0) {
+      returnValue = rows[0];
+    }
+    resolve(returnValue);
+  })});
 }
 
 async function buildTweetText(genericTweet) {
@@ -314,13 +184,54 @@ function retweetAndLikeByTag(hashTag) {
   
 }
 
+async function tweetPlayer() {
+  try {
+    if(fibonacciSequence[player] === 21) {
+      //tweet a book advertisement
+      buildLink('where id < 40');
+     } else if(fibonacciSequence[player] === 2) {
+      // tweet a medium link
+      buildMediumLink();
+      // tweet the book ad 
+    } else if(fibonacciSequence[player] === 89) {
+      //tweet a different book advertisement
+      buildLink('where id >= 40');
+    } else {
+      //if not a specific index of fibonnaci sequence, then look at index number
+      //even numbers will make a random tweet that is a writing prompt
+      if ( (player % 2) === 0 )  {
+        //randomly choose to build one of the weird story idea tweets
+        tweetStatus(await buildRandoTweet());
+      }
+      
+      // also retweet and like something by a random hash tag
+      retweetAndLikeByTag(await getRandomRow('sourceTags', 'sourceTag', 'where id in (3,4,5)'));
+    }
+  } catch (err) {
+    console.log(err)
+  }
+  
+    player++;
+    //once we reache the end of the fibonacci sequence, reset the player to 0 to restart the sequence again
+    if(player >= fibonacciSequence.length) {
+      player = 0;
+      
+    }
+    // measure the distance between the last used and next number in the sequence
+    var span = fibonacciSequence[player] - fibonacciSequence[player-1];
+    //make sure the number is always at leas one
+    span = span <= 1 ? 1 : span;
+    // find a random number in that span to be the next timeout
+    var randomTimeout =  fibonacciSequence[player-1] + Math.floor((Math.random() * (span)));
+    randomTimeout = randomTimeout  < 1 ? 1 : randomTimeout;
+    
+    console.log("next tweet in " + (randomTimeout ).toString(10) + " minutes");
+    //the next tweet will occur X minutes where x is somewhere in that span of the fibonacci sequence
+    setTimeout(tweetPlayer, randomTimeout * 60000);
+}
+
 var listener = app.listen(process.env.PORT, async function () {
   console.log('Your bot is running on port ' + listener.address().port);
   console.log('startup tweet');
-  //console.log(await getRandomRow('pluralNouns', 'pluralNoun', ''));
-  // try out a tweet builder
- fillCaches();
-  //give ten seconds to fill the caches
-  setTimeout(tweetPlayer, 5000);
-  //setTimeout(shortcutCall, 5000);
+  tweetPlayer();
 });
