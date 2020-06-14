@@ -202,7 +202,8 @@ async function searchTweetsAndReply() {
   //console.log()
   var d = new Date();
   var replyTweets = [];
-  
+  var limit = 15;
+  var run = 1;
   replyTweets.push('The ad was simple when I saw it, "Wanted: Intern. Morally Flexible, handle complex problems. Room, board and stpend provided. Inquire at H.Connal, Preternatural Investigator" Nothing is ever that simple though...     http://mybook.to/AnotherDeadIntern');
   replyTweets.push("The Hitchhiker's Guide to Coding can help you know where to start with #coding, learn a language, and land a first #job in software development.   http://getbook.at/HG2C");
   replyTweets.push("Hemlock and Morgan heard a pa-rum pum pum pum. They soon find a demonic drummer tasked to keep a beat going for zombies to obey a mysterious dark master.    http://getbook.at/LittleDrummerBoy");
@@ -221,7 +222,7 @@ async function searchTweetsAndReply() {
     console.log(data.statuses.length);
     //repliedStatuses - status_id
     data.statuses.forEach( async function(status) {
-      if(status.in_reply_to_status_id_str) {
+      if(status.in_reply_to_status_id_str && run <= limit) {
         var alreadyReplied = await statusReplied(status.in_reply_to_status_id_str);
         if(!alreadyReplied) {
           replyTweets.forEach(async function(tweet) {
@@ -236,7 +237,7 @@ async function searchTweetsAndReply() {
             });
           });
           await markStatusReplied(status.in_reply_to_status_id_str);
-          
+          run = run+1;
         }
       }
       
