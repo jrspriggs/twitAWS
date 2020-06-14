@@ -27,7 +27,7 @@ var path = require('path'),
 app.use(express.static('public'));
 
 
-var fibonacciSequence = [1,1,2,3,5,8,13,21,34,55,89];
+var fibonacciSequence = [0,1,2,3,5,8,13,21,34,55,89];
 var player = 0;
 
 
@@ -148,6 +148,7 @@ function getRandomFullRow(tableName, whereClause) {
   })});
 }
 
+
 async function buildTweetText(genericTweet) {
   var replacer = '';
   var newVal = '';
@@ -178,6 +179,71 @@ function retweetAndLikeByTag(hashTag) {
   
 }
 
+function markStatusReplied(status_id) {
+  var queryString = `insert into repliedStatuses (status_id) values ('${status_id}')`;
+  connection.query(queryString);
+}
+
+function statusReplied(status_id) {
+  //repliedStatuses - status_id
+  var queryString = `select * from repliedStatuses where status_id = '${status_id}'`;
+  var returnValue = false;
+  return new Promise(function(resolve, reject){
+    connection.query(queryString, function (err, rows, fields) {
+    if (err) reject(new Error("Error rows is undefined"));
+    if( rows.length > 0) {
+      returnValue = true;
+    }
+    resolve(returnValue);
+  })});
+  
+}
+async function searchTweetsAndReply() {
+  //console.log()
+  var d = new Date();
+  var replyTweets = [];
+  
+  replyTweets.push('The ad was simple when I saw it, "Wanted: Intern. Morally Flexible, handle complex problems. Room, board and stpend provided. Inquire at H.Connal, Preternatural Investigator" Nothing is ever that simple though...     http://mybook.to/AnotherDeadIntern');
+  replyTweets.push("The Hitchhiker's Guide to Coding can help you know where to start with #coding, learn a language, and land a first #job in software development.   http://getbook.at/HG2C");
+  replyTweets.push("Hemlock and Morgan heard a pa-rum pum pum pum. They soon find a demonic drummer tasked to keep a beat going for zombies to obey a mysterious dark master.    http://getbook.at/LittleDrummerBoy");
+  replyTweets.push("When his daughter's stuffed koala went mising, one dad's only hope for bedtime is a magical talking cat. Together they face supernatural beasts, aliens, and much more!    http://getbook.at/TheBearWasNotThere");
+  
+  d.setDate(d.getDate() - 1);
+  var dateString = d.getFullYear() + '-' + (d.getMonth()+1).toString().padStart(2, '0') + '-' +(d.getDate()).toString().padStart(2, '0')
+
+  T.get('search/tweets', { q: 'joelspriggs kindleUnlimited url:OverAGodsDeadBody -filter:retweets since:'+dateString, count:100, result_type: 'recent' }, function(err, data, response) {
+    if (err) 
+    {
+      throw err;
+    }
+
+    console.log(data);
+    console.log(data.statuses.length);
+    //repliedStatuses - status_id
+    data.statuses.forEach( async function(status) {
+      if(status.in_reply_to_status_id_str) {
+        var alreadyReplied = await statusReplied(status.in_reply_to_status_id_str);
+        if(!alreadyReplied) {
+          replyTweets.forEach(async function(tweet) {
+            T.post('statuses/update', { status: '@'+status.in_reply_to_screen_name+' '+tweet, in_reply_to_status_id: status.in_reply_to_status_id_str }, function(err, data, response) {
+              if (err){
+                dumpErrorConsole(err)
+              }
+              else{
+                console.log('success!');
+                console.log("tweeted: ", tweet, " reply to ", status.in_reply_to_status_id_str);
+              }
+            });
+          });
+          await markStatusReplied(status.in_reply_to_status_id_str);
+          
+        }
+      }
+      
+    });
+  });
+  
+}
 //called to parse the list of followers and followings to followback any new followers automatically.
 function followBacks() {
   var followers = [];
@@ -198,15 +264,17 @@ function followBacks() {
           console.log(newFriends);
         
           newFriends.forEach( function(value) {
-            T.post('friendships/create', {user_id:value}, function(err, data, response) {
-              if (err){
-                dumpErrorConsole(err);
-              }
-              else{
-                console.log('success!');
-                console.log("friended: ", value);
-              }
-            });
+            if(value !== 1114039108769337300) {
+              T.post('friendships/create', {user_id:value}, function(err, data, response) {
+                if (err){
+                  dumpErrorConsole(err);
+                }
+                else{
+                  console.log('success!');
+                  console.log("friended: ", value);
+                }
+              });
+            }
           })
         }
       })
@@ -230,6 +298,11 @@ async function tweetPlayer() {
       buildMediumLink();
       // run the followbacks once a sequence
       followBacks();
+     } else if(fibonacciSequence[player] === 1) {
+       
+       buildLink('where id=46')
+     } else if(fibonacciSequence[player] === 0) {
+       searchTweetsAndReply();
     } else if(fibonacciSequence[player] === 89) {
       //tweet a different book advertisement
       buildLink('where id >= 40');
@@ -270,5 +343,6 @@ async function tweetPlayer() {
 var listener = app.listen(process.env.PORT, async function () {
   console.log('Your bot is running on port ' + listener.address().port);
   console.log('startup tweet');
+  //searchTweetsAndReply();
   tweetPlayer();
 });
